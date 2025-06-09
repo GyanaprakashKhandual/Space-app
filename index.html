@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K6 Test Results Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 1.2rem;
+            color: #6b7280;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .category-section {
+            margin-bottom: 40px;
+        }
+
+        .category-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #4f46e5;
+            text-transform: capitalize;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: linear-gradient(135deg, #374151, #4b5563);
+            color: white;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s ease;
+        }
+
+        tr:hover td {
+            background-color: #f9fafb;
+        }
+
+        .network-cell {
+            font-weight: 600;
+            color: #1f2937;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+        }
+
+        .duration-cell {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.85rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pass {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .status-fail {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .pass-rate {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .pass-rate.high {
+            color: #059669;
+        }
+
+        .pass-rate.medium {
+            color: #d97706;
+        }
+
+        .pass-rate.low {
+            color: #dc2626;
+        }
+
+        .counts {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc2626;
+            font-size: 1.1rem;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px auto;
+            display: block;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            th, td {
+                padding: 8px 6px;
+                font-size: 0.8rem;
+            }
+
+            .category-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>K6 Test Results Dashboard</h1>
+            <p>Performance Testing Analytics & Metrics</p>
+        </div>
+        
+        <div class="content">
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                Loading test results...
+            </div>
+            
+            <div id="error" class="error" style="display: none;">
+                Failed to load test results. Please check your connection and try again.
+                <button class="refresh-btn" onclick="loadData()">Retry</button>
+            </div>
+            
+            <div id="results" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://k6backendjson.onrender.com/testresults';
+
+        function getPassRateClass(passRate) {
+            const rate = parseInt(passRate);
+            if (rate >= 90) return 'high';
+            if (rate >= 70) return 'medium';
+            return 'low';
+        }
+
+        function formatMetricValue(value, type) {
+            if (type === 'duration') {
+                return `<span class="metric-value">${value}</span>`;
+            }
+            return value;
+        }
+
+        function createTable(category) {
+            const table = `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Network</th>
+                                <th>Avg Duration</th>
+                                <th>Min Duration</th>
+                                <th>Max Duration</th>
+                                <th>P90</th>
+                                <th>P95</th>
+                                <th>Status Pass Rate</th>
+                                <th>Status Result</th>
+                                <th>Response Time Pass Rate</th>
+                                <th>Response Time Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${category.tests.map(test => `
+                                <tr>
+                                    <td class="network-cell">${test.network}</td>
+                                    <td class="duration-cell">${formatMetricValue(test.metrics.duration.avg, 'duration')}</td>
+                                    <td class="duration-cell">${formatMetricValue(test.metrics.duration.min, 'duration')}</td>
+                                    <td class="duration-cell">${formatMetricValue(test.metrics.duration.max, 'duration')}</td>
+                                    <td class="duration-cell">${formatMetricValue(test.metrics.duration.p90, 'duration')}</td>
+                                    <td class="duration-cell">${formatMetricValue(test.metrics.duration.p95, 'duration')}</td>
+                                    <td>
+                                        <div class="pass-rate ${getPassRateClass(test.metrics.status.passRate)}">${test.metrics.status.passRate}</div>
+                                        <div class="counts">Pass: ${test.metrics.status.passCount} | Fail: ${test.metrics.status.failCount}</div>
+                                    </td>
+                                    <td><span class="status-badge status-${test.metrics.status.result}">${test.metrics.status.result}</span></td>
+                                    <td>
+                                        <div class="pass-rate ${getPassRateClass(test.metrics.responseTime.passRate)}">${test.metrics.responseTime.passRate}</div>
+                                        <div class="counts">Pass: ${test.metrics.responseTime.passCount} | Fail: ${test.metrics.responseTime.failCount}</div>
+                                    </td>
+                                    <td><span class="status-badge status-${test.metrics.responseTime.result}">${test.metrics.responseTime.result}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            return table;
+        }
+
+        async function loadData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const resultsEl = document.getElementById('results');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            resultsEl.style.display = 'none';
+
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                let html = '';
+                data.forEach(category => {
+                    html += `
+                        <div class="category-section">
+                            <h2 class="category-title">${category.name}</h2>
+                            ${createTable(category)}
+                        </div>
+                    `;
+                });
+
+                html += `<button class="refresh-btn" onclick="loadData()">Refresh Data</button>`;
+
+                resultsEl.innerHTML = html;
+                loadingEl.style.display = 'none';
+                resultsEl.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // Load data when page loads
+        document.addEventListener('DOMContentLoaded', loadData);
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
